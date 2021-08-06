@@ -1,0 +1,2 @@
+This is a workaround for a buggy wifi camera which returns invalid response in its header causing home assistant to barf.
+The workaround is to "wash" the response by relaying the request via this http server
