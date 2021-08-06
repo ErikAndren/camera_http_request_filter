@@ -1,0 +1,13 @@
+[Unit]
+Description=Reroute mqtt messages
+After=network.target
+Requires=network.target
+ 
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /home/erik/Development/camera_http_request_filter/server.py
+Restart=always
+User=erik
+ 
+[Install]
+WantedBy=multi-user.target
