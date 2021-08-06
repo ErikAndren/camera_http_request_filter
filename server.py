@@ -2,8 +2,10 @@ import http.server
 import cgi
 import base64
 import json
-from urllib.parse import urlparse, parse_qs
+import requests
+from requests.auth import HTTPBasicAuth
 
+from urllib.parse import urlparse, parse_qs
 
 class CustomServerHandler(http.server.BaseHTTPRequestHandler):
 
@@ -22,47 +24,72 @@ class CustomServerHandler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         key = self.server.get_auth_key()
 
-        ''' Present frontpage with user authentication. '''
-        if self.headers.get('Authorization') == None:
-            self.do_AUTHHEAD()
+#        print(self.headers.get('Authorization'))
+#        print(self.headers.get('Authorization').split()[1])
+        # Only extract the encode byt string
+        auth_bytestring = base64.b64decode(self.headers.get('Authorization').split()[1])
+#        print(auth_bytestring)
+        auth = auth_bytestring.decode('utf-8')
+#       print(auth)
+        auth = auth.split(':')
+        print(auth)
 
-            response = {
-                'success': False,
-                'error': 'No auth header received'
-            }
+        response = requests.get('http://192.168.0.26/snapshot.cgi',
+            auth = HTTPBasicAuth(auth[0], auth[1]))
 
-            self.wfile.write(bytes(json.dumps(response), 'utf-8'))
-
-        elif self.headers.get('Authorization') == 'Basic ' + str(key):
+        if response.status_code == 200:
             self.send_response(200)
+            self.send_header('Content-type', 'image/jpeg')
+            self.end_headers()
+            self.wfile.write(response.content)
+        else:
+            self.send_response(401)
+            self.send_header(
+                'WWW-Authenticate', 'Basic realm="Demo Realm"')
             self.send_header('Content-type', 'application/json')
             self.end_headers()
 
-            getvars = self._parse_GET()
+        # ''' Present frontpage with user authentication. '''
+        # if self.headers.get('Authorization') == None:
+        #     self.do_AUTHHEAD()
 
-            response = {
-                'path': self.path,
-                'get_vars': str(getvars)
-            }
+        #     response = {
+        #         'success': False,
+        #         'error': 'No auth header received'
+        #     }
 
-            base_path = urlparse(self.path).path
-            if base_path == '/path1':
-                # Do some work
-                pass
-            elif base_path == '/path2':
-                # Do some work
-                pass
+        #     self.wfile.write(bytes(json.dumps(response), 'utf-8'))
 
-            self.wfile.write(bytes(json.dumps(response), 'utf-8'))
-        else:
-            self.do_AUTHHEAD()
+        # elif self.headers.get('Authorization') == 'Basic ' + str(key):
+        #     self.send_response(200)
+        #     self.send_header('Content-type', 'application/json')
+        #     self.end_headers()
 
-            response = {
-                'success': False,
-                'error': 'Invalid credentials'
-            }
+        #     getvars = self._parse_GET()
 
-            self.wfile.write(bytes(json.dumps(response), 'utf-8'))
+        #     response = {
+        #         'path': self.path,
+        #         'get_vars': str(getvars)
+        #     }
+
+        #     base_path = urlparse(self.path).path
+        #     if base_path == '/path1':
+        #         # Do some work
+        #         pass
+        #     elif base_path == '/path2':
+        #         # Do some work
+        #         pass
+
+        #     self.wfile.write(bytes(json.dumps(response), 'utf-8'))
+        # else:
+        #     self.do_AUTHHEAD()
+
+        #     response = {
+        #         'success': False,
+        #         'error': 'Invalid credentials'
+        #     }
+
+        #     self.wfile.write(bytes(json.dumps(response), 'utf-8'))
 
     def do_POST(self):
         key = self.server.get_auth_key()
@@ -150,7 +177,6 @@ class CustomHTTPServer(http.server.HTTPServer):
 
     def get_auth_key(self):
         return self.key
-
 
 if __name__ == '__main__':
     server = CustomHTTPServer(('', 8888))
